@@ -61,6 +61,12 @@ abv_ma60 = calc_breadth(60, 5)
 
 rvol_series, rvol_pct = _load_rvol()
 pcr_series, pcr_pct = _load_pcr()
+
+# PCR 原始值 (當日, 不平滑)
+pcr_raw_df = data.get('tw_option_put_call_ratio')
+pcr_oi_raw = pcr_raw_df.set_index('date')['買賣權未平倉量比率%']
+pcr_oi_raw.index = pd.to_datetime(pcr_oi_raw.index)
+pcr_oi_raw = pcr_oi_raw.sort_index()
 tsmc_chg, tsmc_pct = _load_tsmc_holder()
 margin_dd60 = _load_margin_dd60()
 margin_bal_chg = _load_margin_bal_chg()
@@ -78,6 +84,7 @@ df = pd.DataFrame({
     'abv_ma20': abv_ma20, 'abv_ma60': abv_ma60,
     'rvol': rvol_series, 'rvol_pct': rvol_pct,
     'pcr': pcr_series, 'pcr_pct': pcr_pct,
+    'pcr_raw': pcr_oi_raw,
     'mom5': mom5,
     'margin_dd60': margin_dd60,
     'margin_bal_chg': margin_bal_chg,
@@ -390,7 +397,7 @@ td:first-child, th:first-child {{ text-align: left; }}
     </tr>
     <tr>
       <td style="text-align:left">PCR未平倉</td>
-      <td>{latest.get('pcr', 0):.1f}</td>
+      <td>{latest.get('pcr_raw', 0):.1f} <span style="color:#64748b; font-size:0.8em">(5日均:{latest.get('pcr', 0):.1f})</span></td>
       <td><strong>{int(latest.get('pcr_pct', 0)*100)}%</strong></td>
       <td>&le;30%</td>
       <td style="color: {'#ef4444' if latest.get('pcr_pct', 0) <= 0.30 else '#22c55e'}">{'&#9745; 注意' if latest.get('pcr_pct', 0) <= 0.30 else '&#9744; 正常'}</td>
