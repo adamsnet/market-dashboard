@@ -233,7 +233,10 @@ for s in similar_stats:
     similar_html += f'<td>{s["wr20"]:.0f}%</td>'
     similar_html += '</tr>\n'
 similar_html += '  </table>\n'
-similar_html += '  <div class="sub" style="margin-top:8px;">根據當前觸發的因子組合，統計歷史上相同狀態後的大盤表現</div>\n'
+similar_html += '  <div class="sub" style="margin-top:8px; line-height:1.6;">'
+similar_html += '「目前狀態」= 三個因子都在當前值 &plusmn;10% 範圍內的歷史日<br>'
+similar_html += '其餘為固定危險門檻的回測 | ★ = 當前符合該條件'
+similar_html += '</div>\n'
 similar_html += '</div>'
 
 # ============================================================
