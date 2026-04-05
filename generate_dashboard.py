@@ -142,40 +142,52 @@ cur_pcr_low = latest.get('pcr_pct', 0) <= 0.30
 # 統計各組合
 similar_stats = []
 
+# 目前狀態: 用 ±10% 範圍匹配「跟現在類似的歷史日」
+rv = latest.get('rvol_pct', 0.5)
+tv = latest.get('tsmc_pct', 0.5)
+pv = latest.get('pcr_pct', 0.5)
+
 combos = [
-    ('目前狀態 (完全匹配)', [
-        ('rvol_pct', '>=', 0.75) if cur_rvol_high else ('rvol_pct', '<', 0.75),
-        ('tsmc_pct', '<=', 0.25) if cur_tsmc_low else ('tsmc_pct', '>', 0.25),
-        ('pcr_pct', '<=', 0.30) if cur_pcr_low else ('pcr_pct', '>', 0.30),
+    (f'目前狀態 (波動P{int(rv*100)} 台積P{int(tv*100)} PCR_P{int(pv*100)})', [
+        ('rvol_pct', '>=', max(0, rv - 0.10)),
+        ('rvol_pct', '<=', min(1, rv + 0.10)),
+        ('tsmc_pct', '>=', max(0, tv - 0.10)),
+        ('tsmc_pct', '<=', min(1, tv + 0.10)),
+        ('pcr_pct', '>=', max(0, pv - 0.10)),
+        ('pcr_pct', '<=', min(1, pv + 0.10)),
     ]),
 ]
 
-# 固定的危險因子定義 (不管當前有沒有觸發都列)
-fixed_factors = [
+# 固定的危險因子 (不管當前有沒有觸發都列)
+danger_factors = [
     ('波動率高(>=P75)', 'rvol_pct', '>=', 0.75),
     ('台積大戶撤(<=P25)', 'tsmc_pct', '<=', 0.25),
-    ('PCR低(<=P30)', 'pcr_pct', '<=', 0.30),
+    ('PCR低自滿(<=P30)', 'pcr_pct', '<=', 0.30),
 ]
 
+def is_triggered(col, op, th):
+    v = latest.get(col, 0.5)
+    return (op == '>=' and v >= th) or (op == '<=' and v <= th)
+
 # 各單因子
-for name, col, op, th in fixed_factors:
-    tag = ' <-- 當前符合' if (
-        (op == '>=' and latest.get(col, 0.5) >= th) or
-        (op == '<=' and latest.get(col, 0.5) <= th)
-    ) else ''
+for name, col, op, th in danger_factors:
+    tag = ' ★當前符合' if is_triggered(col, op, th) else ''
     combos.append((f'{name}{tag}', [(col, op, th)]))
 
 # 所有雙因子組合
-for i in range(len(fixed_factors)):
-    for j in range(i+1, len(fixed_factors)):
-        n1, c1, o1, t1 = fixed_factors[i]
-        n2, c2, o2, t2 = fixed_factors[j]
+for i in range(len(danger_factors)):
+    for j in range(i+1, len(danger_factors)):
+        n1, c1, o1, t1 = danger_factors[i]
+        n2, c2, o2, t2 = danger_factors[j]
         short1 = n1.split('(')[0]
         short2 = n2.split('(')[0]
-        combos.append((f'{short1}+{short2}', [(c1, o1, t1), (c2, o2, t2)]))
+        both = is_triggered(c1, o1, t1) and is_triggered(c2, o2, t2)
+        tag = ' ★當前符合' if both else ''
+        combos.append((f'{short1}+{short2}{tag}', [(c1, o1, t1), (c2, o2, t2)]))
 
 # 三重危險
-combos.append(('三重危險(風險迴避v2)', [
+all3 = all(is_triggered(c, o, t) for _, c, o, t in danger_factors)
+combos.append((f'三重危險=風險迴避v2{" ★當前符合" if all3 else ""}', [
     ('rvol_pct', '>=', 0.75), ('tsmc_pct', '<=', 0.25), ('pcr_pct', '<=', 0.30)
 ]))
 
