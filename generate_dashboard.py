@@ -143,27 +143,29 @@ combos = [
     ]),
 ]
 
-# 動態生成當前觸發的因子組合
-active_factors = []
-if cur_rvol_high: active_factors.append(('波動率高', 'rvol_pct', '>=', 0.75))
-if cur_tsmc_low: active_factors.append(('台積大戶撤', 'tsmc_pct', '<=', 0.25))
-if cur_pcr_low: active_factors.append(('PCR低', 'pcr_pct', '<=', 0.30))
+# 每個因子都列出當前狀態的回測
+all_factors = [
+    ('波動率高' if cur_rvol_high else '波動率正常',
+     'rvol_pct', '>=' if cur_rvol_high else '<', 0.75),
+    ('台積大戶撤' if cur_tsmc_low else '台積大戶正常',
+     'tsmc_pct', '<=' if cur_tsmc_low else '>', 0.25),
+    ('PCR低(自滿)' if cur_pcr_low else f'PCR偏高(排名{int(latest.get("pcr_pct", 0)*100)}%)',
+     'pcr_pct', '<=' if cur_pcr_low else '>=', 0.30 if cur_pcr_low else latest.get('pcr_pct', 0.5) * 0.9),
+]
 
 # 各單因子
-for name, col, op, th in active_factors:
+for name, col, op, th in all_factors:
     combos.append((f'只看{name}', [(col, op, th)]))
 
-# 觸發的雙因子
-if len(active_factors) >= 2:
-    for i in range(len(active_factors)):
-        for j in range(i+1, len(active_factors)):
-            n1, c1, o1, t1 = active_factors[i]
-            n2, c2, o2, t2 = active_factors[j]
-            combos.append((f'{n1}+{n2}', [(c1, o1, t1), (c2, o2, t2)]))
+# 所有雙因子組合
+for i in range(len(all_factors)):
+    for j in range(i+1, len(all_factors)):
+        n1, c1, o1, t1 = all_factors[i]
+        n2, c2, o2, t2 = all_factors[j]
+        combos.append((f'{n1}+{n2}', [(c1, o1, t1), (c2, o2, t2)]))
 
-# 三重 (如果都觸發)
-if len(active_factors) == 3:
-    combos.append(('三重全觸發', [(c, o, t) for _, c, o, t in active_factors]))
+# 三重
+combos.append(('三重全符合', [(c, o, t) for _, c, o, t in all_factors]))
 
 # 對照
 combos.append(('2020年以來全部日期', []))
