@@ -150,29 +150,34 @@ combos = [
     ]),
 ]
 
-# 每個因子都列出當前狀態的回測
-all_factors = [
-    ('波動率高' if cur_rvol_high else '波動率正常',
-     'rvol_pct', '>=' if cur_rvol_high else '<', 0.75),
-    ('台積大戶撤' if cur_tsmc_low else '台積大戶正常',
-     'tsmc_pct', '<=' if cur_tsmc_low else '>', 0.25),
-    ('PCR低(自滿)' if cur_pcr_low else f'PCR偏高(排名{int(latest.get("pcr_pct", 0)*100)}%)',
-     'pcr_pct', '<=' if cur_pcr_low else '>=', 0.30 if cur_pcr_low else latest.get('pcr_pct', 0.5) * 0.9),
+# 固定的危險因子定義 (不管當前有沒有觸發都列)
+fixed_factors = [
+    ('波動率高(>=P75)', 'rvol_pct', '>=', 0.75),
+    ('台積大戶撤(<=P25)', 'tsmc_pct', '<=', 0.25),
+    ('PCR低(<=P30)', 'pcr_pct', '<=', 0.30),
 ]
 
 # 各單因子
-for name, col, op, th in all_factors:
-    combos.append((f'只看{name}', [(col, op, th)]))
+for name, col, op, th in fixed_factors:
+    tag = ' <-- 當前符合' if (
+        (op == '>=' and latest.get(col, 0.5) >= th) or
+        (op == '<=' and latest.get(col, 0.5) <= th)
+    ) else ''
+    combos.append((f'{name}{tag}', [(col, op, th)]))
 
 # 所有雙因子組合
-for i in range(len(all_factors)):
-    for j in range(i+1, len(all_factors)):
-        n1, c1, o1, t1 = all_factors[i]
-        n2, c2, o2, t2 = all_factors[j]
-        combos.append((f'{n1}+{n2}', [(c1, o1, t1), (c2, o2, t2)]))
+for i in range(len(fixed_factors)):
+    for j in range(i+1, len(fixed_factors)):
+        n1, c1, o1, t1 = fixed_factors[i]
+        n2, c2, o2, t2 = fixed_factors[j]
+        short1 = n1.split('(')[0]
+        short2 = n2.split('(')[0]
+        combos.append((f'{short1}+{short2}', [(c1, o1, t1), (c2, o2, t2)]))
 
-# 三重
-combos.append(('三重全符合', [(c, o, t) for _, c, o, t in all_factors]))
+# 三重危險
+combos.append(('三重危險(風險迴避v2)', [
+    ('rvol_pct', '>=', 0.75), ('tsmc_pct', '<=', 0.25), ('pcr_pct', '<=', 0.30)
+]))
 
 # 對照
 combos.append(('2020年以來全部日期', []))
