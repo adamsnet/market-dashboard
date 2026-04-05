@@ -10,7 +10,12 @@ from datetime import datetime
 warnings.filterwarnings('ignore')
 from finlab import data
 import finlab
-finlab.login('aIpYfwdzzx0z4uZnVZMW4pavdB+5H7F5LIJV6Xn8aGf8Ab+acqPT5ta3HqVyLZDn#vip_m')
+import os
+token = os.environ.get('FINLAB_TOKEN', '')
+if token:
+    finlab.login(token)
+else:
+    finlab.login()  # 用 finlab 內建的登入方式
 
 import requests
 

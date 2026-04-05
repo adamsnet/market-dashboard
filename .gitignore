@@ -1,0 +1,4 @@
+update_dashboard.bat
+update.log
+*.pyc
+__pycache__/
