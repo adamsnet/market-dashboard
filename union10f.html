@@ -23,7 +23,7 @@ body { font-family:-apple-system,'Segoe UI',sans-serif; background:#0f172a; colo
 <body>
 <div class="header">
   <h1>UNION10F 個股武裝停損</h1>
-  <div class="update">更新時間: 2026-08-02 23:51｜<a href="./index.html">← 回市場儀表板</a></div>
+  <div class="update">更新時間: 2026-08-02 23:53｜<a href="./index.html">← 回市場儀表板</a></div>
 </div>
 <div class="charts-grid">
 <div class="chart-container">
@@ -63,10 +63,13 @@ for (const s of S) {
     body.push([Math.min(s.o[i], s.c[i]), Math.max(s.o[i], s.c[i])]);
     colors.push(s.c[i] >= s.o[i] ? '#ef4444' : '#22c55e');
   }
-  const mark = (idxs, color, rot) => ({
-    type: 'scatter', label: '', data: idxs.map(i => ({x: s.dates[i], y: s.h[i] * 1.01})),
-    pointStyle: 'triangle', rotation: rot, radius: 5, backgroundColor: color, borderColor: '#fff', borderWidth: 0.5,
-  });
+  const mark = (idxs, color, rot, yFn) => {
+    const arr = new Array(n).fill(null);
+    idxs.forEach(i => arr[i] = yFn(i));
+    return { type: 'line', label: '', data: arr, showLine: false,
+      pointStyle: 'triangle', rotation: rot, pointRadius: 5, pointHoverRadius: 6,
+      pointBackgroundColor: color, pointBorderColor: '#fff', pointBorderWidth: 0.5, order: 0 };
+  };
   new Chart(document.getElementById('ch_' + s.id), {
     data: {
       labels: s.dates,
@@ -74,10 +77,10 @@ for (const s of S) {
         { type: 'bar', label: '影線', data: wick, backgroundColor: colors, barPercentage: 0.25, categoryPercentage: 1.0, order: 3 },
         { type: 'bar', label: 'K棒', data: body, backgroundColor: colors, barPercentage: 0.85, categoryPercentage: 1.0, order: 2 },
         { type: 'line', label: '武裝出場線', data: s.line, borderColor: '#f97316', borderWidth: 2, pointRadius: 0, spanGaps: false, stepped: true, order: 1 },
-        mark(s.ev.trig, '#f59e0b', 180),
-        mark(s.ev.exit, '#ef4444', 45),
-        { ...mark(s.ev.reA, '#3b82f6', 0), data: s.ev.reA.map(i => ({x: s.dates[i], y: s.l[i] * 0.99})) },
-        { ...mark(s.ev.reB, '#22c55e', 0), data: s.ev.reB.map(i => ({x: s.dates[i], y: s.l[i] * 0.99})) },
+        mark(s.ev.trig, '#f59e0b', 180, i => s.h[i] * 1.01),
+        mark(s.ev.exit, '#ef4444', 45, i => s.c[i]),
+        mark(s.ev.reA, '#3b82f6', 0, i => s.l[i] * 0.99),
+        mark(s.ev.reB, '#22c55e', 0, i => s.l[i] * 0.99),
       ]
     },
     options: {
