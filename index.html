@@ -34,7 +34,7 @@ td:first-child, th:first-child { text-align: left; }
 
 <div class="header">
   <h1>台股風險儀表板</h1>
-  <div class="update">更新時間: 2026-08-05 21:22</div>
+  <div class="update">更新時間: 2026-08-05 21:24</div>
 </div>
 
 <!-- ★ 領先風險訊號 (2026-08 最新驗證, 高檔區限定) -->
@@ -207,7 +207,7 @@ td:first-child, th:first-child { text-align: left; }
 </div>
 <div class="row" style="grid-template-columns: 1fr;">
   <div class="chart-container">
-    <h3>領先訊號歷史 (expanding 百分位) — S1 門檻P90 / S2 = RET&ge;P80 且 FLW&le;P50</h3>
+    <h3>領先訊號歷史 (expanding 百分位) — 紅虛線P90=減碼 / 綠虛線P30=S1與RET雙低可重壓</h3>
     <canvas id="chart6"></canvas>
   </div>
 </div>
@@ -298,7 +298,8 @@ new Chart(document.getElementById('chart6'), {
       { label: 'S1 CH_DEF_RS百分位', data: D.ch_def_rank.values, borderColor: '#ef4444', borderWidth: 1.8, pointRadius: 0 },
       { label: 'S2 RET百分位', data: D.ret_rank.values, borderColor: '#f59e0b', borderWidth: 1.3, pointRadius: 0 },
       { label: 'S2 FLW百分位', data: D.flw_rank.values, borderColor: '#3b82f6', borderWidth: 1.3, pointRadius: 0 },
-      { label: 'P90門檻', data: D.ch_def_rank.values.map(() => 90), borderColor: '#ef4444', borderWidth: 1, pointRadius: 0, borderDash: [4,4] },
+      { label: 'P90減碼線', data: D.ch_def_rank.values.map(() => 90), borderColor: '#ef4444', borderWidth: 1, pointRadius: 0, borderDash: [4,4] },
+      { label: 'P30重壓線 (S1+RET雙低→1.5x)', data: D.ch_def_rank.values.map(() => 30), borderColor: '#22c55e', borderWidth: 1.2, pointRadius: 0, borderDash: [6,4] },
     ]
   },
   options: chartOpts
