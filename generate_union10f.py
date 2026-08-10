@@ -94,6 +94,8 @@ def run_stock(df, entry_i):
 
     hold = np.zeros(n, dtype=bool)
     line_arr = np.full(n, np.nan)
+    ghost_arr = np.full(n, np.nan)   # 無現行防線時, 以舊防線值灰線延伸 (純參考)
+    last_line = np.nan
     ev = {'trig': [], 'exit': [], 'reA': [], 'reB': []}
     hold[entry_i] = True
     in_pos = True
@@ -119,6 +121,10 @@ def run_stock(df, entry_i):
             if not np.isnan(line) and not np.isnan(trig_high) and atr[i] > 0:
                 line = max(line, trig_high - k * atr[i])
             line_arr[i] = line
+            if not np.isnan(line):
+                last_line = line
+            elif not np.isnan(last_line):
+                ghost_arr[i] = last_line     # 在場內但未武裝 (如 reA 回場後)
             if not np.isnan(line) and c[i] < line:
                 in_pos = False
                 ev['exit'].append(i)
@@ -129,6 +135,8 @@ def run_stock(df, entry_i):
             else:
                 hold[i] = True
         else:
+            if not np.isnan(last_line):
+                ghost_arr[i] = last_line     # 出場期間灰線延伸
             if np.isnan(run_min) or l[i] < run_min:
                 run_min = l[i]
                 no_low = 0
@@ -150,7 +158,7 @@ def run_stock(df, entry_i):
                 stall = 0
                 ev['reB'].append(i)
                 hold[i] = True
-    return hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall, line
+    return hold, line_arr, ghost_arr, ev, trig_high, in_pos, run_min, no_low, stall, line
 
 
 cut = pd.Timestamp.today() - pd.DateOffset(years=PLOT_YEARS)
@@ -170,7 +178,7 @@ for sid in WATCH:
         print(f"  {sid}: 資料不足, 跳過")
         continue
     entry_i = int(np.argmax(df.index >= cut))
-    hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall, line_now = run_stock(df, entry_i)
+    hold, line_arr, ghost_arr, ev, trig_high, in_pos, run_min, no_low, stall, line_now = run_stock(df, entry_i)
 
     # 還原價 → 實際價 換算係數 (逐日, 除權息日會跳動)
     dfr = pd.DataFrame({'open': src['ro'][sid], 'high': src['rh'][sid],
@@ -182,6 +190,7 @@ for sid in WATCH:
     dfx = dfr[m]  # 顯示用真實 OHLC
     off = int(np.argmax(m))
     line_disp = line_arr * ratio  # 防線換算成真實價
+    ghost_disp = ghost_arr * ratio
     # 用當前 live 防線, 不撈歷史陣列 (否則回場後未武裝會顯示出場前的殘影值)
     cur_line = line_now * r_last if in_pos and not np.isnan(line_now) else None
 
@@ -210,6 +219,7 @@ for sid in WATCH:
         'l': [round(float(x), 2) for x in dfx['low']],
         'c': [round(float(x), 2) for x in dfx['close']],
         'line': [None if np.isnan(x) else round(float(x), 2) for x in line_disp[off:]],
+        'ghost': [None if np.isnan(x) else round(float(x), 2) for x in ghost_disp[off:]],
         'ev': {k: [i - off for i in v if i >= off] for k, v in ev.items()},
     })
     print(f"  {sid} {NAME.get(sid,'')}: {detail}")
@@ -254,7 +264,7 @@ body {{ font-family:-apple-system,'Segoe UI',sans-serif; background:#0f172a; col
 <div class="charts-grid">{charts}
 </div>
 <div class="note">
-▼觸發K（60日高10%內 大黑K/長上影，門檻 min(1ATR, 5%價)）｜橘線=防線（觸發高點−k×ATR10，<b>每日棘輪只升不降</b>）｜✕收盤跌破防線
+▼觸發K（60日高10%內 大黑K/長上影，門檻 min(1ATR, 5%價)）｜橘線=防線（觸發高點−k×ATR10，<b>每日棘輪只升不降</b>）｜灰虛線=舊防線延伸（僅參考位置，非現行停損）｜✕收盤跌破防線
 藍▲收復觸發高點｜綠▲落底確認（連續20日未創新低，防線改掛底部低點）
 <b>k 值</b>：平常 3.0；收盤連續 10 日未創持有期新高（停滯）→ 收緊至 2.75。
 2026-08-10 升級：加入每日棘輪與停滯收緊（1,354 個歷史事件 + 2025 驗證段四項指標全勝；2026/07 帳戶重播七月少虧 37%）。
@@ -289,6 +299,8 @@ for (const s of S) {{
              return d[i] != null && (i === 0 || d[i-1] == null) && (i === d.length - 1 || d[i+1] == null) ? 3 : 0; }},
            pointBackgroundColor: '#f97316', pointBorderColor: '#f97316',
            spanGaps: false, stepped: true, order: 1 }},
+        {{ type: 'line', label: '舊防線延伸', data: s.ghost, borderColor: '#64748b', borderWidth: 1.5,
+           borderDash: [5, 4], pointRadius: 0, spanGaps: false, stepped: true, order: 1 }},
         mark(s.ev.trig, '#f59e0b', 180, i => s.h[i] * 1.01),
         mark(s.ev.exit, '#ef4444', 45, i => s.c[i]),
         mark(s.ev.reA, '#3b82f6', 0, i => s.l[i] * 0.99),
@@ -303,6 +315,7 @@ for (const s of S) {{
           if (ctx.dataset.label === 'K棒') {{ const i = ctx.dataIndex;
             return `開${{s.o[i]}} 高${{s.h[i]}} 低${{s.l[i]}} 收${{s.c[i]}}`; }}
           if (ctx.dataset.label === '武裝出場線' && ctx.raw != null) return `出場線 ${{ctx.raw}}`;
+          if (ctx.dataset.label === '舊防線延伸' && ctx.raw != null) return `舊防線(參考) ${{ctx.raw}}`;
           return null; }} }} }} }},
       scales: {{
         x: {{ ticks: {{ color: tickC, maxTicksLimit: 12, font: {{ size: 10 }} }}, grid: {{ display: false }} }},
