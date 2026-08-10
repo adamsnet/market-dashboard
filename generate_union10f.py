@@ -283,7 +283,11 @@ for (const s of S) {{
       datasets: [
         {{ type: 'bar', label: '影線', data: wick, backgroundColor: colors, barPercentage: 0.25, categoryPercentage: 1.0, order: 3 }},
         {{ type: 'bar', label: 'K棒', data: body, backgroundColor: colors, barPercentage: 0.85, categoryPercentage: 1.0, order: 2 }},
-        {{ type: 'line', label: '武裝出場線', data: s.line, borderColor: '#f97316', borderWidth: 2, pointRadius: 0, spanGaps: false, stepped: true, order: 1 }},
+        {{ type: 'line', label: '武裝出場線', data: s.line, borderColor: '#f97316', borderWidth: 2,
+           pointRadius: (ctx) => {{ const d = ctx.dataset.data, i = ctx.dataIndex;
+             return d[i] != null && (i === 0 || d[i-1] == null) && (i === d.length - 1 || d[i+1] == null) ? 3 : 0; }},
+           pointBackgroundColor: '#f97316', pointBorderColor: '#f97316',
+           spanGaps: false, stepped: true, order: 1 }},
         mark(s.ev.trig, '#f59e0b', 180, i => s.h[i] * 1.01),
         mark(s.ev.exit, '#ef4444', 45, i => s.c[i]),
         mark(s.ev.reA, '#3b82f6', 0, i => s.l[i] * 0.99),
