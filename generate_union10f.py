@@ -150,7 +150,7 @@ def run_stock(df, entry_i):
                 stall = 0
                 ev['reB'].append(i)
                 hold[i] = True
-    return hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall
+    return hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall, line
 
 
 cut = pd.Timestamp.today() - pd.DateOffset(years=PLOT_YEARS)
@@ -170,7 +170,7 @@ for sid in WATCH:
         print(f"  {sid}: 資料不足, 跳過")
         continue
     entry_i = int(np.argmax(df.index >= cut))
-    hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall = run_stock(df, entry_i)
+    hold, line_arr, ev, trig_high, in_pos, run_min, no_low, stall, line_now = run_stock(df, entry_i)
 
     # 還原價 → 實際價 換算係數 (逐日, 除權息日會跳動)
     dfr = pd.DataFrame({'open': src['ro'][sid], 'high': src['rh'][sid],
@@ -182,7 +182,8 @@ for sid in WATCH:
     dfx = dfr[m]  # 顯示用真實 OHLC
     off = int(np.argmax(m))
     line_disp = line_arr * ratio  # 防線換算成真實價
-    cur_line = (line_arr[~np.isnan(line_arr)][-1] * r_last) if in_pos and (~np.isnan(line_arr)).any() else None
+    # 用當前 live 防線, 不撈歷史陣列 (否則回場後未武裝會顯示出場前的殘影值)
+    cur_line = line_now * r_last if in_pos and not np.isnan(line_now) else None
 
     cur = '$' if mkt == 'US' else ''
     stall_txt = (f"｜⚠停滯{stall}日 k=2.75 收緊中" if stall >= STALL_N
